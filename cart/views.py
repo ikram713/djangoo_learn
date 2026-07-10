@@ -3,9 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from .models import Cart, CartItem
 from products.models import Product
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
-user = User.objects.first()  #
 
 @csrf_exempt
 def add_to_cart(request):
@@ -23,9 +21,9 @@ def add_to_cart(request):
         return JsonResponse({"error": "Missing product_id"}, status=400)
 
     # Assuming the user is authenticated
-    # user = request.user
-    # if not user.is_authenticated:
-    #     return JsonResponse({"error": "User not authenticated"}, status=401)
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({"error": "User not authenticated"}, status=401)
 
     # Get or create the user's cart
     cart, created = Cart.objects.get_or_create(user=user)
@@ -62,8 +60,9 @@ def remove_from_cart(request):
     if not product_id:
         return JsonResponse({"error": "Missing product_id"}, status=400)
 
-    # Temporary user for testing
-    user = User.objects.first()  # replace with request.user in production
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({"error": "User not authenticated"}, status=401)
 
     try:
         cart = Cart.objects.get(user=user)

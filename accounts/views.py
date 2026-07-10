@@ -1,57 +1,40 @@
-from django.shortcuts import render
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login, logout
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
-from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAuthenticated
 
-# Create your views here.
-#singup view
-@csrf_exempt
+from .serializers import SignupSerializer
+
+@api_view(["POST"])
 def signup_view(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)  # Parse JSON from request
-            username = data['username']
-            email = data['email']
-            password = data['password']
-        except (KeyError, json.JSONDecodeError):
-            return JsonResponse({'error': 'Invalid data'}, status=400)
 
-        # Check if username already exists
-        if User.objects.filter(username=username).exists():
-            return JsonResponse({'error': 'Username already exists'}, status=400)
+    serializer = SignupSerializer(data=request.data)
 
-        # Create user (password is hashed automatically)
-        user = User.objects.create_user(username=username, email=email, password=password)
+    if serializer.is_valid():
 
-        # Optional: auto-login after signup
-        login(request, user)
+        serializer.save()
 
-        return JsonResponse({'message': 'User created successfully and logged in'}, status=201)
+        return Response(
+            {"message": "User created successfully"},
+            status=status.HTTP_201_CREATED,
+        )
 
-    return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+    return Response(
+        serializer.errors,
+        status=status.HTTP_400_BAD_REQUEST,
+    )
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def me(request):
 
-#login view
-@csrf_exempt
-def login_view(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            username = data['username']
-            password = data['password']
-        except (KeyError, json.JSONDecodeError):
-            return JsonResponse({'error': 'Invalid data'}, status=400)
+    user = request.user
 
-        user = authenticate(request, username=username, password=password)
+    return Response({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+    })
 
-        if user:
-            login(request, user)  # Create session
-            return JsonResponse({'message': 'Login successful'})
-        else:
-            return JsonResponse({'error': 'Invalid credentials'}, status=401)
-
-    return JsonResponse({'error': 'Only POST method allowed'}, status=405)
